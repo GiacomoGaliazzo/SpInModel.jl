@@ -18,7 +18,7 @@ function SpinModelCalibration(prms::SpinModelConfig, data::DataFrame)
     B = zeros(Float64, total_node)
     previuos_B = zeros(Float64, total_node)
 
-    modelformulastring::Array{string}
+    modelformulastring::Array{String} = Vector{String}(undef, 0)
     beta::Float64 = Float64(0.0)
     previous_beta::Float64 = Float64(0.0)
             
@@ -46,7 +46,7 @@ function SpinModelCalibration(prms::SpinModelConfig, data::DataFrame)
     
 
 
-    ret::Float64 == 0;
+    _ret::Float64 = Float64(0.0);
 
-    return ret
+    return _ret
 end
