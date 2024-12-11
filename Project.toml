@@ -3,6 +3,10 @@ uuid = "10792a61-568a-4c48-9526-ce895f1a8e73"
 authors = ["Giacomo G"]
 version = "1.0.0-DEV"
 
+[deps]
+DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
+Nettle = "49dea1ee-f6fa-5aa6-9a11-8816cee7d4b9"
+
 [compat]
 julia = "1.6.7"
 

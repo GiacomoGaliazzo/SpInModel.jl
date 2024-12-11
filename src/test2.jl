@@ -166,6 +166,8 @@ total_flow::Float64, total_estimate::Float64, total_diff::Float64 = Float64(0.0)
 
 
 
-pippo::Int64 = 16^
+pippo2::BigInt = 16^10
 
-println(pippo)
+println(pippo2)
+
+typeof(pippo2)

@@ -1,4 +1,7 @@
 include("_000 param_init.jl")
+
+
+using DataFrames, CSV
 include("_001 datasample.jl")
 unique_values = unique(vcat(df_sample.res_name, df_sample.des_name))
 total_node = length(unique_values)

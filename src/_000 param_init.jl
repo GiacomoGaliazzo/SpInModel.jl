@@ -16,6 +16,8 @@ Pkg.add("JSON3")
 
 Pkg.add("StringEncodings")
 
+Pkg.add("DataStructures")
+
 
 Pkg.add("StatsBase") 
 Pkg.add("Distributions") 

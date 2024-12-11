@@ -10,21 +10,21 @@ struct Power <: SpinModelFormula end
 struct Exponential <: SpinModelFormula end
 =#
 
-@enum SpinModelEnum begin
+@enum SpInModelEnum begin
     DoublyConstrained = 1
     SingleConstrained_Origin = 2
     SingleConstrained_Destination = 3
     UnConstrained = 4
 end
 
-@enum SpinModelFormula begin
+@enum SpInModelFormula begin
     Power = 1
     Exponential = 2
 end
 
-struct SpinModelConfig
-    model::SpinModelEnum
-    formula::SpinModelFormula
+struct SpInModelConfig
+    model::SpInModelEnum
+    formula::SpInModelFormula
     includeinnerflow::Bool
     setminimumdatavalue::Bool
     minimumcost::Float64
@@ -45,7 +45,12 @@ struct SpinModelConfig
     returnRSquared::Bool
 end
 
-struct SpinData
+struct SpInModelStatistic
+    name::String
+    value::Float64
+end
+
+struct SpInData
         origin::String
         destination::String
         cost::Float64
@@ -56,12 +61,13 @@ struct SpinData
         difference::Float64
 end
 
-struct SpinResult
+struct SpInResult
     convergence::Bool
     reason::String
     beta::Float64
-    statistics::Array{String}
-    spinData::Array{SpinData}
+    statistics::Array{SpInModelStatistic}
+    spInData::Array{SpInData}
     r^2::Float64
+    t_Statistics::Float64
     rFormula::String
 end

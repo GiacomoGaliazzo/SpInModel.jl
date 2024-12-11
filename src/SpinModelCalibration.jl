@@ -1,15 +1,15 @@
 
 
-function SpinModelCalibration(prms::SpinModelConfig, data::DataFrame)
+function SpInModelCalibration(prms::SpinModelConfig, data::DataFrame)
 
     flag_full_matrix::Bool = true
 
-    _ret::SpinResult = SpinResult(false, "init", NaN, Array{String}(undef, 0), [s], Float64(0.0), "")
+    _ret::SpInResult = SpInResult(false, "init", NaN, Array{SpInModelStatistic}(undef, 0), Array{SpInData}(undef, 0), Float64(0.0), Float64(0.0),"")
 
-    inputdata::Vector{SpinData} = Vector{SpinData}(undef, 0)
+    inputdata::Vector{SpInData} = Vector{SpInData}(undef, 0)
 
     if prms.inlcudeinnerflow
-        inputdata::Vector{SpinData} = Vector{SpinData}(undef, nrow(data))
+        inputdata::Vector{SpInData} = Vector{SpInData}(undef, nrow(data))
     end
 
     for i in 1:nrow(data)
@@ -22,33 +22,33 @@ function SpinModelCalibration(prms::SpinModelConfig, data::DataFrame)
                 if data.from[i] != data.to[i]
                     cost = cost > minimumcost ? cost : minimumcost
                     flow = flow > minimumflow ? flow : minimumflow
-                    push!(inputdata, SpinData(data.from[i], data.to[i], cost, flow, 0.0, 0.0, 0.0, 0.0))
+                    push!(inputdata, SpInData(data.from[i], data.to[i], cost, flow, 0.0, 0.0, 0.0, 0.0))
                 end
             else
                 cost = cost > minimumcost ? cost : minimumcost
                 flow = flow > minimumflow ? flow : minimumflow
-                inputdata[i] = SpinData(data.from[i], data.to[i], cost, flow, 0.0, 0.0, 0.0, 0.0)
+                inputdata[i] = SpInData(data.from[i], data.to[i], cost, flow, 0.0, 0.0, 0.0, 0.0)
             end
         else 
             if !prms.inlcudeinnerflow
                 if data.from[i] != data.to[i]
-                    push!(inputdata, SpinData(data.from[i], data.to[i], cost, flow, 0.0, 0.0, 0.0, 0.0))
+                    push!(inputdata, SpInData(data.from[i], data.to[i], cost, flow, 0.0, 0.0, 0.0, 0.0))
                 end
             else
-                inputdata[i] = SpinData(data.from[i], data.to[i], cost, flow, 0.0, 0.0, 0.0, 0.0)
+                inputdata[i] = SpInData(data.from[i], data.to[i], cost, flow, 0.0, 0.0, 0.0, 0.0)
             end
         end
     end
 
     spin_dict = Dict()
-    origin_dict = Dict{String, Vector{SpinData}}()
-    destination_dict = Dict{String, Vector{SpinData}}()
+    origin_dict = Dict{String, Vector{SpInData}}()
+    destination_dict = Dict{String, Vector{SpInData}}()
     for s in inputdata
 
         if !haskey(spin_dict, (s.origin, s.destination))
             spin_dict[(s.origin, s.destination)] = s
         else
-            _ret = SpinResult(false, "duplicate vector", NaN, Array{String}(undef, 0), [s], Float64(0.0), "")
+            _ret = SpInResult(false, "duplicate vector", NaN, Array{SpInModelStatistic}(undef, 0), [s], Float64(0.0), Float64(0.0), "")
             return _ret
         end
 
@@ -779,7 +779,7 @@ function SpinModelCalibration(prms::SpinModelConfig, data::DataFrame)
         else
             if prm.returnStatistics || prm.returnFullData || prm.returnRSquared
 
-                outputdata::Vector{SpinData} = Vector{SpinData}(undef, 0)
+                outputdata::Vector{SpInData} = Vector{SpInData}(undef, 0)
                 for q in inputdata
                     i = get(node_index,q.origin, -1)
                     j = get(node_index,q.destination, -1)
@@ -788,23 +788,25 @@ function SpinModelCalibration(prms::SpinModelConfig, data::DataFrame)
 
                         if (i < 0)
                             _origin = q.origin 
-                            _ret = SpinResult(false, "error inner procedure on origin $_origin ", NaN, Array{String}(undef, 0), [s], Float64(0.0), "")
+                            _ret = SpInResult(false, "error inner procedure on origin $_origin ", NaN, Array{SpInModelStatistic}(undef, 0), [q], Float64(0.0), Float64(0.0), "")
                             return _ret
                         else 
                             _destination = q.destination 
-                            _ret = SpinResult(false, "error inner procedure on destination $_destination ", NaN, Array{String}(undef, 0), [s], Float64(0.0), "")
+                            _ret = SpInResult(false, "error inner procedure on destination $_destination ", NaN, Array{SpInModelStatistic}(undef, 0), [q], Float64(0.0), Float64(0.0), "")
                             return _ret
                         end
                     else
                         if flag_full_matrix
-                            push!(outputdata , SpinData(q.from, q.to, q.cost, q.flow, 0.0, 0.0, Flow_estimate[i, j], q.flow - Flow_estimate[i, j]))
+                            push!(outputdata , SpInData(q.from, q.to, q.cost, q.flow, 0.0, 0.0, Flow_estimate[i, j], q.flow - Flow_estimate[i, j]))
                         else
                             if (isfinite(datamatrix[i, j, 1]) && isfinite(datamatrix[i, j, 2]))
-                                push!(outputdata , SpinData(q.from, q.to, q.cost, q.flow, 0.0, 0.0, Flow_estimate[i, j], q.flow - Flow_estimate[i, j]))
+                                push!(outputdata , SpInData(q.from, q.to, q.cost, q.flow, 0.0, 0.0, Flow_estimate[i, j], q.flow - Flow_estimate[i, j]))
                             end
                         end
                     end
                 end
+
+                nobs::Int64 = nrow(outputdata)
 
                 total_flow::Float64, total_estimate::Float64, total_diff::Float64 = Float64(0.0), Float64(0.0), Float64(0.0);
                 real_total_estimate::Float64, real_total_flow::Float64 = Float64(0.0), Float64(0.0);
@@ -814,10 +816,37 @@ function SpinModelCalibration(prms::SpinModelConfig, data::DataFrame)
                 for q in outputdata
                     total_flow += abs(q.flow); total_estimate += abs(q.estimatedflow); total_diff += abs(q.difference);
                     real_total_estimate += q.estimatedflow; real_total_flow += q.flow; 
-
-
+                    sum_of_obs_x_predic += (q.flow * q.estimatedflow); sum_square_predic += q.estimatedflow^2;
+                    sum_square_of_diff_obs_pred += (q.flow - q.estimatedflow)^2;
                 end
 
+                avrg_estim = real_total_estimate / nobs;
+                avrg_obs = real_total_flow / nobs;
+
+                rsq_num::Float64, rsq_den_obs::Float64, rsq_den_est::Float64 = Float64(0.0), Float64(0.0), Float64(0.0);
+                ss_tot::Float64, ss_err::Float64 = Float64(0.0), Float64(0.0);
+
+                for q in outputdata
+                    rsq_num += (q.flow - avrg_obs) * (q.estimatedflow - avrg_estim);
+                    rsq_den_obs += (q.flow - avrg_obs)^2;
+                    rsq_den_est += (q.estimatedflow - avrg_estim)^2;
+                    ss_err += (q.flow - q.estimatedflow)^2;
+                end
+                ss_tot = rsq_den_obs;
+                R_Squared::Float64 =  (rsq_num/( sqrt(rsq_den_obs * rsq_den_est) ))^2;
+                beta_fitting::Float64 = rsq_num / rsq_den_est;
+                alpha_fitting::Float64 = avrg_obs - (beta_fitting * avrg_estim);
+                SE_beta::Float64 = sqrt((sum_square_of_diff_obs_pred / (nobs - 2)) / ( sum_square_predic - real_total_estimate^2 / nobs ));               
+                t_statistics::Float64 = abs((beta_fitting - 1) / SE_beta);
+                r_formula::String = """Formula: Tij(observed) = $(alpha_fitting) + $(beta_fitting) * Tij(estimated)($(SE_beta)) """;
+
+                spStatistics = SpInModelStatistic[];
+                push!(spStatistics, ("alpha_fit", alpha_fitting))
+                push!(spStatistics, ("beta_fit", beta_fitting))
+                push!(spStatistics, ("se_beta", SE_beta))
+        
+                _ret = SpInResult(true, "", beta, spStatistics, outputdata, R_Squared, t_statistics, r_formula)
+                return _ret
 
             end
 

@@ -14,7 +14,7 @@ df_sampple = DataFrame(
 
 
 column_types_df_sample2 = Dict(:from => String, :to => String, :cost => Float64, :flow => Float64)
-df_sample2 = CSV.read("SpInModel.jl/src/data_test1.csv", DataFrame; types=column_types_df_sample2) 
+#df_sample2 = CSV.read("SpInModel.jl/src/data_test1.csv", DataFrame; types=column_types_df_sample2) 
 
 
 
