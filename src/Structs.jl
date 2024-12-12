@@ -34,7 +34,7 @@ struct SpInModelConfig
     fillmissingflow::Float64
     useSIModelMethod::Bool
     ModifyontheFly::Bool
-    startingValueType::Float
+    startingValueType::String
     customBetaInput::Float64
     innerloopconstr::Float64
     outerloopconstr::Float64
@@ -67,7 +67,7 @@ struct SpInResult
     beta::Float64
     statistics::Array{SpInModelStatistic}
     spInData::Array{SpInData}
-    r^2::Float64
+    r_2::Float64
     t_Statistics::Float64
     rFormula::String
 end

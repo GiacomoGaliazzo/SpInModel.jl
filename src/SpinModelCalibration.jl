@@ -1,6 +1,6 @@
 
 
-function SpInModelCalibration(prms::SpinModelConfig, data::DataFrame)
+function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
 
     flag_full_matrix::Bool = true
 
@@ -8,8 +8,8 @@ function SpInModelCalibration(prms::SpinModelConfig, data::DataFrame)
 
     inputdata::Vector{SpInData} = Vector{SpInData}(undef, 0)
 
-    if prms.inlcudeinnerflow
-        inputdata::Vector{SpInData} = Vector{SpInData}(undef, nrow(data))
+    if prm.inlcudeinnerflow
+        inputdata = Vector{SpInData}(undef, nrow(data))
     end
 
     for i in 1:nrow(data)
@@ -18,7 +18,7 @@ function SpInModelCalibration(prms::SpinModelConfig, data::DataFrame)
         flow = data.flow[i]
 
         if prm.setminimumdatavalue
-            if !prms.inlcudeinnerflow
+            if !prm.inlcudeinnerflow
                 if data.from[i] != data.to[i]
                     cost = cost > minimumcost ? cost : minimumcost
                     flow = flow > minimumflow ? flow : minimumflow
@@ -30,7 +30,7 @@ function SpInModelCalibration(prms::SpinModelConfig, data::DataFrame)
                 inputdata[i] = SpInData(data.from[i], data.to[i], cost, flow, 0.0, 0.0, 0.0, 0.0)
             end
         else 
-            if !prms.inlcudeinnerflow
+            if !prm.inlcudeinnerflow
                 if data.from[i] != data.to[i]
                     push!(inputdata, SpInData(data.from[i], data.to[i], cost, flow, 0.0, 0.0, 0.0, 0.0))
                 end
@@ -88,21 +88,18 @@ function SpInModelCalibration(prms::SpinModelConfig, data::DataFrame)
    
 
         modelformulastring::Array{String} = Vector{String}(undef, 0)
-        beta::Float64 = Float64(0.0)
-        previous_beta::Float64 = Float64(0.0)
+        
+        
         beta_stable::Bool = false
             
-        first_beta::Float64 = Float64(0.0)
-        _C_::Float64 = Float64(0.0)
+        
         previous_C_::Float64 = Float64(0.0)
-            
-        first_C_::Float64 = Float64(0.0)
             
         Flow_estimate = zeros(Float64, total_node, total_node)
         first_sumflows::Float64 = Float64(0.0)
         sumflows::Float64 = Float64(0.0)
             
-        delta_increase::Float64 = Float64(0.0)
+        
         delta_beta::Float64 = Float64(0.0)
         delta_C_::Float64 = Float64(0.0)
         delta_Flow_estimate = zeros(Float64, total_node, total_node)
@@ -175,9 +172,14 @@ function SpInModelCalibration(prms::SpinModelConfig, data::DataFrame)
         outerloopdyn::Int64 = 0
         sumsA::Float64 = 0.0
         sumsB::Float64 = 0.0
+        sumabsA::Float64 = 0.0
+        sumabsB::Float64 = 0.0
+
+        _infinite::Bool
+        _issubnormal::Bool
+        _isfinite::Bool
         
         if prm.useSIModelMethod
-            first_sumflows::Float64 = Float64(0.0)
             if flag_full_matrix
                 for i in 1:total_node
                     for j in 1:total_node
@@ -196,7 +198,6 @@ function SpInModelCalibration(prms::SpinModelConfig, data::DataFrame)
                 end
             end
         else
-            first_sumflows::Float64 = Float64(0.0)
             for i in 1:length(inputdata)
                 first_C_ += inputdata[i].cost * inputdata[i].flow
             end
@@ -297,8 +298,6 @@ function SpInModelCalibration(prms::SpinModelConfig, data::DataFrame)
                         end
                     end
 
-                    sumabsA::Float64 = 0; sumabsB::Float64 = 0;
-
                     sumabsA = sum(abs.(A .- previous_A))
                     sumabsB = sum(abs.(B .- previous_B))
 
@@ -317,9 +316,9 @@ function SpInModelCalibration(prms::SpinModelConfig, data::DataFrame)
                     end
                     sumsA = sumabsA; sumsB = sumabsB;
 
-                    _infinite::Bool = isinf(sumsA) || isinf(sumsB)
-                    _issubnormal::Bool = issubnormal(sumsA) || issubnormal(sumsB)
-                    _isfinite::Bool = isfinite(sumsA) && isfinite(sumsB)
+                    _infinite = isinf(sumsA) || isinf(sumsB)
+                    _issubnormal = issubnormal(sumsA) || issubnormal(sumsB)
+                    _isfinite = isfinite(sumsA) && isfinite(sumsB)
 
                     if !(_isfinite && !_infinite && !_issubnormal )
                         overFlowCalc = true;
@@ -372,8 +371,6 @@ function SpInModelCalibration(prms::SpinModelConfig, data::DataFrame)
                         end
                     end
     
-                    sumabsA::Float64 = 0; sumabsB::Float64 = 0;
-    
                     sumabsA = sum(abs.(A .- previous_A))
                     sumabsB = sum(abs.(B .- previous_B))
     
@@ -392,9 +389,9 @@ function SpInModelCalibration(prms::SpinModelConfig, data::DataFrame)
                     end
                     sumsA = sumabsA; sumsB = sumabsB;
     
-                    _infinite::Bool = isinf(sumsA) || isinf(sumsB)
-                    _issubnormal::Bool = issubnormal(sumsA) || issubnormal(sumsB)
-                    _isfinite::Bool = isfinite(sumsA) && isfinite(sumsB)
+                    _infinite = isinf(sumsA) || isinf(sumsB)
+                    _issubnormal = issubnormal(sumsA) || issubnormal(sumsB)
+                    _isfinite = isfinite(sumsA) && isfinite(sumsB)
     
                     if !(_isfinite && !_infinite && !_issubnormal )
                         overFlowCalc = true;
@@ -555,8 +552,6 @@ function SpInModelCalibration(prms::SpinModelConfig, data::DataFrame)
                                 end
                             end
         
-                            sumabsA::Float64 = 0; sumabsB::Float64 = 0;
-        
                             sumabsA = sum(abs.(A .- previous_A))
                             sumabsB = sum(abs.(B .- previous_B))
         
@@ -575,9 +570,9 @@ function SpInModelCalibration(prms::SpinModelConfig, data::DataFrame)
                             end
                             sumsA = sumabsA; sumsB = sumabsB;
         
-                            _infinite::Bool = isinf(sumsA) || isinf(sumsB)
-                            _issubnormal::Bool = issubnormal(sumsA) || issubnormal(sumsB)
-                            _isfinite::Bool = isfinite(sumsA) && isfinite(sumsB)
+                            _infinite = isinf(sumsA) || isinf(sumsB)
+                            _issubnormal = issubnormal(sumsA) || issubnormal(sumsB)
+                            _isfinite = isfinite(sumsA) && isfinite(sumsB)
         
                             if !(_isfinite && !_infinite && !_issubnormal )
                                 overFlowCalc = true;
@@ -629,8 +624,6 @@ function SpInModelCalibration(prms::SpinModelConfig, data::DataFrame)
                                     end
                                 end
                             end
-            
-                            sumabsA::Float64 = 0; sumabsB::Float64 = 0;
             
                             sumabsA = sum(abs.(A .- previous_A))
                             sumabsB = sum(abs.(B .- previous_B))

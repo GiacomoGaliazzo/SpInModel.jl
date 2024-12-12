@@ -8,7 +8,7 @@ total_node = length(unique_values)
 
 include("Structs.jl")
 
-parms = SpinModelConfig(DoublyConstrained, Power, true, true, Float64(2.0), Float64(0.0), true, Float64(1.0), Float64(0.0), true, false, "SimodelEvaluation", Float64(0.0), Float64(0.01), Float64(0.00001), Int64(1000), Int64(10), true, true, true)
+parms = SpInModelConfig(DoublyConstrained, Power, true, true, Float64(2.0), Float64(0.0), true, Float64(1.0), Float64(0.0), true, false, "SimodelEvaluation", Float64(0.0), Float64(0.01), Float64(0.00001), Int64(1000), Int64(10), true, true, true)
 
 include("SpinModelCalibration.jl")
 
