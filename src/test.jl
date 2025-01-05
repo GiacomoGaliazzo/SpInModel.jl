@@ -10,11 +10,15 @@ include("Structs.jl")
 
 parms = SpInModelConfig(DoublyConstrained, Power, true, true, Float64(2.0), Float64(0.0), true, Float64(1.0), Float64(0.0), true, false, "SimodelEvaluation", Float64(0.0), Float64(0.01), Float64(0.00001), Int64(1000), Int64(10), true, true, true)
 
-include("SpinModelCalibration.jl")
+# include("SpinModelCalibration.jl")
 
 DataFrames.rename!(df_sample, [:res_name => :from, :des_name => :to, :flussi => :flow, :total_minu => :cost])
 
-myres = SpinModelCalibration(parms, df_sample)
+
+include("SpinModelCalibration.jl")
+
+myres = SpInModelCalibration(parms, df_sample)
+
 
 
 

@@ -8,7 +8,7 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
 
     inputdata::Vector{SpInData} = Vector{SpInData}(undef, 0)
 
-    if prm.inlcudeinnerflow
+    if prm.includeinnerflow
         inputdata = Vector{SpInData}(undef, nrow(data))
     end
 
@@ -18,15 +18,15 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
         flow = data.flow[i]
 
         if prm.setminimumdatavalue
-            if !prm.inlcudeinnerflow
+            if !prm.includeinnerflow
                 if data.from[i] != data.to[i]
-                    cost = cost > minimumcost ? cost : minimumcost
-                    flow = flow > minimumflow ? flow : minimumflow
+                    cost = cost > prm.minimumcost ? cost : prm.minimumcost
+                    flow = flow > prm.minimumflow ? flow : prm.minimumflow
                     push!(inputdata, SpInData(data.from[i], data.to[i], cost, flow, 0.0, 0.0, 0.0, 0.0))
                 end
             else
-                cost = cost > minimumcost ? cost : minimumcost
-                flow = flow > minimumflow ? flow : minimumflow
+                cost = cost > prm.minimumcost ? cost : prm.minimumcost
+                flow = flow > prm.minimumflow ? flow : prm.minimumflow
                 inputdata[i] = SpInData(data.from[i], data.to[i], cost, flow, 0.0, 0.0, 0.0, 0.0)
             end
         else 
@@ -73,10 +73,10 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
         total_node = length(node_unique)
 
         A = zeros(Float64, total_node)
-        previuos_A = zeros(Float64, total_node)
+        previous_A = zeros(Float64, total_node)
     
         B = zeros(Float64, total_node)
-        previuos_B = zeros(Float64, total_node)
+        previous_B = zeros(Float64, total_node)
 
         SecondArray = zeros(Float64, total_node, total_node)
         full_matrix_flow = zeros(Float64, total_node, total_node)
@@ -118,11 +118,11 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
             from_origin = get(origin_dict, node_unique[i], [])
             if length(from_origin) == 0
                 if prm.fillmissingdata
-                    sumorigin[i] = fillmissingflow * total_node
+                    sumorigin[i] = prm.fillmissingflow * total_node
                     for j in 1:total_node
-                        datamatrix[i,j,1] = fillmissingcost
-                        datamatrix[i,j,2] = fillmissingflow
-                        sumdestination[j] += fillmissingflow
+                        datamatrix[i,j,1] = prm.fillmissingcost
+                        datamatrix[i,j,2] = prm.fillmissingflow
+                        sumdestination[j] += prm.fillmissingflow
                     end
                 else
                     flag_full_matrix = false
@@ -137,10 +137,10 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
                     from_origin_index = findfirst(x -> x.destination == node_unique[j], from_origin)
                     if isnothing(from_origin_index)
                         if prm.fillmissingdata
-                            datamatrix[i,j,1] = fillmissingcost
-                            datamatrix[i,j,2] = fillmissingflow
-                            sumorigin[i] += fillmissingflow
-                            sumdestination[j] += fillmissingflow
+                            datamatrix[i,j,1] = prm.fillmissingcost
+                            datamatrix[i,j,2] = prm.fillmissingflow
+                            sumorigin[i] += prm.fillmissingflow
+                            sumdestination[j] += prm.fillmissingflow
                         else
                             flag_full_matrix = false
                             datamatrix[i,j,1] = Float64.NaN
@@ -157,16 +157,16 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
         end
 
         A = zeros(Float64, total_node)
-        previuos_A = zeros(Float64, total_node)
+        previous_A = zeros(Float64, total_node)
         B = ones(Float64, total_node)
-        previuos_B = ones(Float64, total_node)
+        previous_B = ones(Float64, total_node)
 
         first_beta::Float64 = Float64(0.0)
         first_C_::Float64 = Float64(0.0)
         _C_::Float64 = Float64(0.0)
         beta::Float64 = Float64(0.0)
         first_Ratio_C_sumflow::Float64 = Float64(0.0)
-        delta_increase::Float64 = Float64(1.0) / Math.Exponential(20)
+        delta_increase::Float64 = Float64(1.0) / exp(20)
         previous_beta::Float64 = Float64(0.0)
         innerloopdyn::Int64 = 0
         outerloopdyn::Int64 = 0
@@ -175,9 +175,9 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
         sumabsA::Float64 = 0.0
         sumabsB::Float64 = 0.0
 
-        _infinite::Bool
-        _issubnormal::Bool
-        _isfinite::Bool
+        _infinite::Bool = false
+        _issubnormal::Bool = false
+        _isfinite::Bool = false
         
         if prm.useSIModelMethod
             if flag_full_matrix
@@ -225,13 +225,13 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
         overFlowCalc::Bool = false;
         while(ExternalLoop)
             outerloopdyn += 1;
-
+            println("outerloopdyn: ", outerloopdyn)
             if outerloopdyn == 1
                 beta = first_beta; _C_ = first_C_;
                 if prm.useSIModelMethod
                     sumflows = first_sumflows
                     first_Ratio_C_sumflow = first_C_ / first_sumflows
-                    delta_increase =  Float64(1.0) / Math.Exponential(20)
+                    delta_increase =  Float64(1.0) / exp(20)
                 else
                     sumflows = 0;
                     first_Ratio_C_sumflow = 0;
@@ -250,12 +250,13 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
                 # inner loop
 
                 innerloopdyn += 1
+                println("253 innerloopdyn: ", innerloopdyn)
                 if prm.formula == Exponential
                     if flag_full_matrix
                         for i in 1:total_node
-                            previuos_A[i] = A[i]; A[i] = 0;
+                            previous_A[i] = A[i]; A[i] = 0;
                             for j in 1:total_node
-                                A[i] = A[i] + (B[j] * sumdestination[j] * Math.Exponential(-beta * datamatrix[i,j,1]))
+                                A[i] = A[i] + (B[j] * sumdestination[j] * exp(-beta * datamatrix[i,j,1]))
                             end
                             if A[i] != 0
                                 A[i] = 1 / A[i]
@@ -263,10 +264,10 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
                         end
                     else
                         for i in 1:total_node
-                            previuos_A[i] = A[i]; A[i] = 0;
+                            previous_A[i] = A[i]; A[i] = 0;
                             for j in 1:total_node
                                 if !isnan(datamatrix[i,j,1]) 
-                                    A[i] = A[i] + (B[j] * sumdestination[j] * Math.Exponential(-beta * datamatrix[i,j,1]))
+                                    A[i] = A[i] + (B[j] * sumdestination[j] * exp(-beta * datamatrix[i,j,1]))
                                 end
                             end
                             if A[i] != 0
@@ -276,9 +277,9 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
                     end
                     if flag_full_matrix
                         for j in 1:total_node
-                            previuos_B[j] = B[j]; B[j] = 0;
+                            previous_B[j] = B[j]; B[j] = 0;
                             for i in 1:total_node
-                                B[j] = B[j] + (A[i] * sumorigin[i] * Math.Exponential(-beta * datamatrix[i,j,1]))
+                                B[j] = B[j] + (A[i] * sumorigin[i] * exp(-beta * datamatrix[i,j,1]))
                             end
                             if B[j] != 0
                                 B[j] = 1 / B[j]
@@ -286,10 +287,10 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
                         end
                     else
                         for j in 1:total_node
-                            previuos_B[j] = B[j]; B[j] = 0;
+                            previous_B[j] = B[j]; B[j] = 0;
                             for i in 1:total_node
                                 if !isnan(datamatrix[i,j,1]) 
-                                    B[j] = B[j] + (A[i] * sumorigin[i] * Math.Exponential(-beta * datamatrix[i,j,1]))
+                                    B[j] = B[j] + (A[i] * sumorigin[i] * exp(-beta * datamatrix[i,j,1]))
                                 end
                             end
                             if B[j] != 0
@@ -303,8 +304,8 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
 
                     #=
                     for i in 1:total_node
-                        sumabsA += Math.Abs(A[i] - previuos_A[i]);
-                        sumabsB += Math.Abs(B[i] - previuos_B[i]);
+                        sumabsA += Math.Abs(A[i] - previous_A[i]);
+                        sumabsB += Math.Abs(B[i] - previous_B[i]);
                     end
                     =#
                     
@@ -326,9 +327,9 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
                 elseif prm.formula == Power
                     if flag_full_matrix
                         for i in 1:total_node
-                            previuos_A[i] = A[i]; A[i] = 0;
+                            previous_A[i] = A[i]; A[i] = 0;
                             for j in 1:total_node
-                                A[i] = A[i] + (B[j] * sumdestination[j] * Math.Power(datamatrix[i,j,1], -beta ))
+                                A[i] = A[i] + (B[j] * sumdestination[j] * (datamatrix[i,j,1] ^ -beta ))
                             end
                             if A[i] != 0
                                A[i] = 1 / A[i]
@@ -336,10 +337,10 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
                         end
                     else
                         for i in 1:total_node
-                            previuos_A[i] = A[i]; A[i] = 0;
+                            previous_A[i] = A[i]; A[i] = 0;
                             for j in 1:total_node
                                 if !isnan(datamatrix[i,j,1]) 
-                                    A[i] = A[i] + (B[j] * sumdestination[j] * Math.Power(datamatrix[i,j,1], -beta))
+                                    A[i] = A[i] + (B[j] * sumdestination[j] * (datamatrix[i,j,1]^ -beta))
                                 end
                             end
                             if A[i] != 0
@@ -349,9 +350,9 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
                     end
                     if flag_full_matrix
                         for j in 1:total_node
-                            previuos_B[j] = B[j]; B[j] = 0;
+                            previous_B[j] = B[j]; B[j] = 0;
                             for i in 1:total_node
-                                B[j] = B[j] + (A[i] * sumorigin[i] * Math.Power(datamatrix[i,j,1], -beta))
+                                B[j] = B[j] + (A[i] * sumorigin[i] * (datamatrix[i,j,1]^ -beta))
                             end
                             if B[j] != 0
                                B[j] = 1 / B[j]
@@ -359,10 +360,10 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
                         end
                     else
                         for j in 1:total_node
-                            previuos_B[j] = B[j]; B[j] = 0;
+                            previous_B[j] = B[j]; B[j] = 0;
                             for i in 1:total_node
                                 if !isnan(datamatrix[i,j,1]) 
-                                    B[j] = B[j] + (A[i] * sumorigin[i] * Math.Power(datamatrix[i,j,1], -beta))
+                                    B[j] = B[j] + (A[i] * sumorigin[i] * (datamatrix[i,j,1]^ -beta))
                                 end
                             end
                             if B[j] != 0
@@ -376,8 +377,8 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
     
                     #=
                         for i in 1:total_node
-                            sumabsA += Math.Abs(A[i] - previuos_A[i]);
-                            sumabsB += Math.Abs(B[i] - previuos_B[i]);
+                            sumabsA += Math.Abs(A[i] - previous_A[i]);
+                            sumabsB += Math.Abs(B[i] - previous_B[i]);
                         end
                     =#
                         
@@ -494,7 +495,7 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
                 else
                     beta = beta + delta_increase
 
-                    innerloopdyn = 0; Noexitbymaximumloop = true; Nocriteriumget = true; !overFlowCalc = false;
+                    innerloopdyn = 0; Noexitbymaximumloop = true; Nocriteriumget = true; overFlowCalc = false;
 
                     A .= 0;
                     B .= 1; 
@@ -504,12 +505,13 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
                         # inner loop
         
                         innerloopdyn += 1
+                        println("508 innerloopdyn: ", innerloopdyn)
                         if prm.formula == Exponential
                             if flag_full_matrix
                                 for i in 1:total_node
-                                    previuos_A[i] = A[i]; A[i] = 0;
+                                    previous_A[i] = A[i]; A[i] = 0;
                                     for j in 1:total_node
-                                        A[i] = A[i] + (B[j] * sumdestination[j] * Math.Exponential(-beta * datamatrix[i,j,1]))
+                                        A[i] = A[i] + (B[j] * sumdestination[j] * exp(-beta * datamatrix[i,j,1]))
                                     end
                                     if A[i] != 0
                                         A[i] = 1 / A[i]
@@ -517,10 +519,10 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
                                 end
                             else
                                 for i in 1:total_node
-                                    previuos_A[i] = A[i]; A[i] = 0;
+                                    previous_A[i] = A[i]; A[i] = 0;
                                     for j in 1:total_node
                                         if !isnan(datamatrix[i,j,1]) 
-                                            A[i] = A[i] + (B[j] * sumdestination[j] * Math.Exponential(-beta * datamatrix[i,j,1]))
+                                            A[i] = A[i] + (B[j] * sumdestination[j] * exp(-beta * datamatrix[i,j,1]))
                                         end
                                     end
                                     if A[i] != 0
@@ -530,9 +532,9 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
                             end
                             if flag_full_matrix
                                 for j in 1:total_node
-                                    previuos_B[j] = B[j]; B[j] = 0;
+                                    previous_B[j] = B[j]; B[j] = 0;
                                     for i in 1:total_node
-                                        B[j] = B[j] + (A[i] * sumorigin[i] * Math.Exponential(-beta * datamatrix[i,j,1]))
+                                        B[j] = B[j] + (A[i] * sumorigin[i] * exp(-beta * datamatrix[i,j,1]))
                                     end
                                     if B[j] != 0
                                         B[j] = 1 / B[j]
@@ -540,10 +542,10 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
                                 end
                             else
                                 for j in 1:total_node
-                                    previuos_B[j] = B[j]; B[j] = 0;
+                                    previous_B[j] = B[j]; B[j] = 0;
                                     for i in 1:total_node
                                         if !isnan(datamatrix[i,j,1]) 
-                                            B[j] = B[j] + (A[i] * sumorigin[i] * Math.Exponential(-beta * datamatrix[i,j,1]))
+                                            B[j] = B[j] + (A[i] * sumorigin[i] * exp(-beta * datamatrix[i,j,1]))
                                         end
                                     end
                                     if B[j] != 0
@@ -557,8 +559,8 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
         
                             #=
                             for i in 1:total_node
-                                sumabsA += Math.Abs(A[i] - previuos_A[i]);
-                                sumabsB += Math.Abs(B[i] - previuos_B[i]);
+                                sumabsA += Math.Abs(A[i] - previous_A[i]);
+                                sumabsB += Math.Abs(B[i] - previous_B[i]);
                             end
                             =#
                             
@@ -580,9 +582,9 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
                         elseif prm.formula == Power
                             if flag_full_matrix
                                 for i in 1:total_node
-                                    previuos_A[i] = A[i]; A[i] = 0;
+                                    previous_A[i] = A[i]; A[i] = 0;
                                     for j in 1:total_node
-                                        A[i] = A[i] + (B[j] * sumdestination[j] * Math.Power(datamatrix[i,j,1], -beta ))
+                                        A[i] = A[i] + (B[j] * sumdestination[j] * (datamatrix[i,j,1]^ -beta ))
                                     end
                                     if A[i] != 0
                                     A[i] = 1 / A[i]
@@ -590,10 +592,10 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
                                 end
                             else
                                 for i in 1:total_node
-                                    previuos_A[i] = A[i]; A[i] = 0;
+                                    previous_A[i] = A[i]; A[i] = 0;
                                     for j in 1:total_node
                                         if !isnan(datamatrix[i,j,1]) 
-                                            A[i] = A[i] + (B[j] * sumdestination[j] * Math.Power(datamatrix[i,j,1], -beta))
+                                            A[i] = A[i] + (B[j] * sumdestination[j] * (datamatrix[i,j,1]^ -beta))
                                         end
                                     end
                                     if A[i] != 0
@@ -603,9 +605,9 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
                             end
                             if flag_full_matrix
                                 for j in 1:total_node
-                                    previuos_B[j] = B[j]; B[j] = 0;
+                                    previous_B[j] = B[j]; B[j] = 0;
                                     for i in 1:total_node
-                                        B[j] = B[j] + (A[i] * sumorigin[i] * Math.Power(datamatrix[i,j,1], -beta))
+                                        B[j] = B[j] + (A[i] * sumorigin[i] * (datamatrix[i,j,1]^ -beta))
                                     end
                                     if B[j] != 0
                                     B[j] = 1 / B[j]
@@ -613,10 +615,10 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
                                 end
                             else
                                 for j in 1:total_node
-                                    previuos_B[j] = B[j]; B[j] = 0;
+                                    previous_B[j] = B[j]; B[j] = 0;
                                     for i in 1:total_node
                                         if !isnan(datamatrix[i,j,1]) 
-                                            B[j] = B[j] + (A[i] * sumorigin[i] * Math.Power(datamatrix[i,j,1], -beta))
+                                            B[j] = B[j] + (A[i] * sumorigin[i] * (datamatrix[i,j,1]^ -beta))
                                         end
                                     end
                                     if B[j] != 0
@@ -630,8 +632,8 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
             
                             #=
                                 for i in 1:total_node
-                                    sumabsA += Math.Abs(A[i] - previuos_A[i]);
-                                    sumabsB += Math.Abs(B[i] - previuos_B[i]);
+                                    sumabsA += Math.Abs(A[i] - previous_A[i]);
+                                    sumabsB += Math.Abs(B[i] - previous_B[i]);
                                 end
                             =#
                                 
@@ -643,9 +645,9 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
                             end
                             sumsA = sumabsA; sumsB = sumabsB;
             
-                            _infinite::Bool = isinf(sumsA) || isinf(sumsB)
-                            _issubnormal::Bool = issubnormal(sumsA) || issubnormal(sumsB)
-                            _isfinite::Bool = isfinite(sumsA) && isfinite(sumsB)
+                            _infinite = isinf(sumsA) || isinf(sumsB)
+                            _issubnormal = issubnormal(sumsA) || issubnormal(sumsB)
+                            _isfinite = isfinite(sumsA) && isfinite(sumsB)
             
                             if !(_isfinite && !_infinite && !_issubnormal )
                                 overFlowCalc = true;
@@ -701,7 +703,7 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
                     delta_beta = 1 / ((Ratio_C_sumflow - delta_Ratio_C_sumflow) / delta_increase);
                     delta_error = delta_beta * (first_Ratio_C_sumflow - Ratio_C_sumflow);
                     beta = beta - delta_error;
-                    if ( !isfinite(beta) || (Math.Abs(beta - previous_beta) <= 0.000000000000001))
+                    if ( !isfinite(beta) || (abs(beta - previous_beta) <= 0.000000000000001))
                         ExternalLoop = false; 
                     end
                 end
@@ -768,10 +770,10 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
         end # while(ExternalLoop
 
         if overFlowCalc
-
+            println("771")
         else
             if prm.returnStatistics || prm.returnFullData || prm.returnRSquared
-
+                println("774")
                 outputdata::Vector{SpInData} = Vector{SpInData}(undef, 0)
                 for q in inputdata
                     i = get(node_index,q.origin, -1)
@@ -790,16 +792,16 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
                         end
                     else
                         if flag_full_matrix
-                            push!(outputdata , SpInData(q.from, q.to, q.cost, q.flow, 0.0, 0.0, Flow_estimate[i, j], q.flow - Flow_estimate[i, j]))
+                            push!(outputdata , SpInData(q.origin, q.destination, q.cost, q.flow, 0.0, 0.0, Flow_estimate[i, j], q.flow - Flow_estimate[i, j]))
                         else
                             if (isfinite(datamatrix[i, j, 1]) && isfinite(datamatrix[i, j, 2]))
-                                push!(outputdata , SpInData(q.from, q.to, q.cost, q.flow, 0.0, 0.0, Flow_estimate[i, j], q.flow - Flow_estimate[i, j]))
+                                push!(outputdata , SpInData(q.origin, q.destination, q.cost, q.flow, 0.0, 0.0, Flow_estimate[i, j], q.flow - Flow_estimate[i, j]))
                             end
                         end
                     end
                 end
 
-                nobs::Int64 = nrow(outputdata)
+                nobs::Int64 = length(outputdata)
 
                 total_flow::Float64, total_estimate::Float64, total_diff::Float64 = Float64(0.0), Float64(0.0), Float64(0.0);
                 real_total_estimate::Float64, real_total_flow::Float64 = Float64(0.0), Float64(0.0);
@@ -834,9 +836,9 @@ function SpInModelCalibration(prm::SpInModelConfig, data::DataFrame)
                 r_formula::String = """Formula: Tij(observed) = $(alpha_fitting) + $(beta_fitting) * Tij(estimated)($(SE_beta)) """;
 
                 spStatistics = SpInModelStatistic[];
-                push!(spStatistics, ("alpha_fit", alpha_fitting))
-                push!(spStatistics, ("beta_fit", beta_fitting))
-                push!(spStatistics, ("se_beta", SE_beta))
+                push!(spStatistics, SpInModelStatistic("alpha_fit", alpha_fitting))
+                push!(spStatistics, SpInModelStatistic("beta_fit", beta_fitting))
+                push!(spStatistics, SpInModelStatistic("se_beta", SE_beta))
         
                 _ret = SpInResult(true, "", beta, spStatistics, outputdata, R_Squared, t_statistics, r_formula)
                 return _ret

@@ -19,3 +19,14 @@ column_types_df_sample2 = Dict(:from => String, :to => String, :cost => Float64,
 
 
 
+
+column_types_df_2007 = Dict(:origname => String, :destname => String, :travel_10 => Float64, :travel_15 => Float64, :travel_20 => Float64, :flow => Float64)
+#df_sample = CSV.read("SpInModel.jl/src/flussi_north_lom_minuti_auto.txt", DataFrame; types=column_types_df_sample, delim='\t') 
+df_2007 = CSV.read("src/data_2007.txt", DataFrame; types=column_types_df_2007, delim='\t') 
+
+
+
+
+
+
+
